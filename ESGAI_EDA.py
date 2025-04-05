@@ -5,11 +5,11 @@ import concurrent.futures
 
 desiredModel = 'llama3.3'
 
-def AI_detect(transcript):
-    """ 기업 설명을 받아 AI 관련성을 판별하는 함수 """
+def AI_detect(transcript, business_description):
     prompt = f"""
-    Transcript: {transcript}
-**Task** Given a description of a company, determine whether it is AI-related.
+    Business Description: {business_description}
+    Firm Overview: {transcript}
+**Task** Given the description and overview of a company, determine whether it is AI-related.
 
 **Criteria for Evaluation**
 AI-related company: The company directly develops or heavily incorporates AI technologies (e.g., AI models, algorithms, AI-powered software, machine learning platforms, AI research, AI-enhanced products and services). This includes companies focused on AI innovation, product development, or providing AI-driven solutions in various industries (e.g., healthcare, finance, automotive, and entertainment).
@@ -34,33 +34,39 @@ Explanation: (For AI-related companies, summarize how they develop or apply AI, 
 
     return status, explanation
 
-df_path = 'I:/Data_for_practice/ESG/esg_score_deal_data.csv'
+df_path = 'I:/Data_for_practice/ESG/final_company_list.csv'
 esg_df = pd.read_csv(df_path)
 
-esg_df = esg_df[esg_df['Deal_status'].isin(['Completed', 'Completed Assumed'])]
-esg_df = esg_df[['Targer_name', 'Target_overview']].drop_duplicates()
+esg_df = esg_df[['Targer_name', 'Target_business_description','Target_overview']].drop_duplicates()
 esg_df = esg_df[esg_df['Target_overview'].notnull()].reset_index(drop=True)
-firm_texts = esg_df['Target_overview'].tolist()
+
+targer_names = esg_df['Targer_name'].tolist()
+firm_overview = esg_df['Target_overview'].tolist()
+firm_business = esg_df['Target_business_description'].tolist()
 
 results = []
-with concurrent.futures.ThreadPoolExecutor() as executor:
-    future_to_text = {executor.submit(AI_detect, text): text for text in firm_texts}
-    for future in concurrent.futures.as_completed(future_to_text):
-        text = future_to_text[future]
-        print(text)
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+    future_to_input = {
+        executor.submit(AI_detect, overview, business): (name, overview, business)
+        for name, overview, business in zip(targer_names, firm_overview, firm_business)
+    }
+
+    for i, future in enumerate(concurrent.futures.as_completed(future_to_input)):
+        name, overview, business = future_to_input[future]
+        print(f"[{i+1}/{len(future_to_input)}] 처리 중...")
         try:
             status, explanation = future.result()
-            results.append({
-                "Company Description": text,
-                "AI Company Status": status,
-                "Explanation": explanation
-            })
         except Exception as e:
-            results.append({
-                "Company Description": text,
-                "AI Company Status": "Error",
-                "Explanation": str(e)
-            })
+            status, explanation = "Error", str(e)
+
+        results.append({
+            "Targer_name": name,
+            "Target_overview": overview,
+            "Target_business_description": business,
+            "AI Company Status": status,
+            "Explanation": explanation
+        })
+        time.sleep(0.2)  # Optional rate limit
 
 df_results = pd.DataFrame(results)
 df_results.to_csv("I:/Data_for_practice/ESG/ai_company_classification_results.csv", index=False)
