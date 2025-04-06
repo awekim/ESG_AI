@@ -47,29 +47,45 @@ firm_overview = esg_df['Target_overview'].tolist()
 firm_business = esg_df['Target_business_description'].tolist()
 
 results = []
-with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-    future_to_input = {
-        executor.submit(AI_detect, overview, business): (name, overview, business)
-        for name, overview, business in zip(targer_names, firm_overview, firm_business)
-    }
+for i, (name, overview, business) in enumerate(zip(targer_names, firm_overview, firm_business)):
+    print(f"[{i+1}/{len(targer_names)}] 처리 중...")
+    try:
+        status, explanation, confidence = AI_detect(overview, business)
+    except Exception as e:
+        status, explanation, confidence = "Error", str(e)
 
-    for i, future in enumerate(concurrent.futures.as_completed(future_to_input)):
-        name, overview, business = future_to_input[future]
-        print(f"[{i+1}/{len(future_to_input)}] 처리 중...")
-        try:
-            status, explanation, confidence = future.result()
-        except Exception as e:
-            status, explanation, confidence = "Error", str(e)
+    results.append({
+        "Target_name": name,
+        "Target_overview": overview,
+        "Target_business_description": business,
+        "AI Company Status": status,
+        "Explanation": explanation,
+        "Confidence Score": confidence
+    })
+    time.sleep(0.2)  
 
-        results.append({
-            "Targer_name": name,
-            "Target_overview": overview,
-            "Target_business_description": business,
-            "AI Company Status": status,
-            "Explanation": explanation,
-            "Confidence Score": confidence
-        })
-        time.sleep(0.2)  # Optional rate limit
+# with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+#     future_to_input = {
+#         executor.submit(AI_detect, overview, business): (name, overview, business)
+#         for name, overview, business in zip(targer_names, firm_overview, firm_business)
+#     }
+#     for i, future in enumerate(concurrent.futures.as_completed(future_to_input)):
+#         name, overview, business = future_to_input[future]
+#         print(f"[{i+1}/{len(future_to_input)}] 처리 중...")
+#         try:
+#             status, explanation, confidence = future.result()
+#         except Exception as e:
+#             status, explanation, confidence = "Error", str(e)
+
+#         results.append({
+#             "Targer_name": name,
+#             "Target_overview": overview,
+#             "Target_business_description": business,
+#             "AI Company Status": status,
+#             "Explanation": explanation,
+#             "Confidence Score": confidence
+#         })
+#         time.sleep(0.2)  # Optional rate limit
 
 df_results = pd.DataFrame(results)
 df_results.to_csv("I:/Data_for_practice/ESG/ai_company_classification_results.csv", index=False)
