@@ -9,7 +9,7 @@ def AI_detect(transcript, business_description):
     prompt = f"""
     Business Description: {business_description}
     Firm Overview: {transcript}
-**Task** Given the description and overview of a company, determine whether it is AI-related.
+**Task** Given the business description and overview of a company, determine whether it is AI-related.
 
 **Criteria for Evaluation**
 AI-related company: The company directly develops or heavily incorporates AI technologies (e.g., AI models, algorithms, AI-powered software, machine learning platforms, AI research, AI-enhanced products and services). This includes companies focused on AI innovation, product development, or providing AI-driven solutions in various industries (e.g., healthcare, finance, automotive, and entertainment).
@@ -17,22 +17,24 @@ Non-AI company: The company uses AI in a supplementary capacity (e.g., for marke
 
 **Output Format**
 AI Company Status: (Choose either "AI-related company" or "Non-AI company")
-Explanation: (For AI-related companies, summarize how they develop or apply AI, focusing on the use of AI-driven products, services, or research. For non-AI companies, describe their primary industry and core business activities.)    """
-    
+Explanation: (For AI-related companies, summarize how they develop or apply AI, focusing on the use of AI-driven products, services, or research. For non-AI companies, describe their primary industry and core business activities.)    
+Confidence Score: (Provide a percentage score from 0 to 100, representing your confidence in the classification.)"""
     try:
         response = ollama.chat(model=desiredModel, messages=[{"role": "user", "content": prompt}])
         result_text = response.get('message', {}).get('content', 'No response received')
         
         status_match = re.search(r"AI Company Status:\s*(.*)", result_text)
         explanation_match = re.search(r"Explanation:\s*(.*)", result_text, re.DOTALL)
+        confidence_match = re.search(r"Confidence Score:\s*(\d+)", result_text)
 
         status = status_match.group(1).strip() if status_match else "Unknown"
         explanation = explanation_match.group(1).strip() if explanation_match else "No explanation provided"
+        confidence = int(confidence_match.group(1)) if confidence_match else None
     except Exception as e:
         status = "Error"
         explanation = str(e)
-
-    return status, explanation
+        confidence = None
+    return status, explanation, confidence
 
 df_path = 'I:/Data_for_practice/ESG/final_company_list.csv'
 esg_df = pd.read_csv(df_path)
@@ -55,16 +57,17 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         name, overview, business = future_to_input[future]
         print(f"[{i+1}/{len(future_to_input)}] 처리 중...")
         try:
-            status, explanation = future.result()
+            status, explanation, confidence = future.result()
         except Exception as e:
-            status, explanation = "Error", str(e)
+            status, explanation, confidence = "Error", str(e)
 
         results.append({
             "Targer_name": name,
             "Target_overview": overview,
             "Target_business_description": business,
             "AI Company Status": status,
-            "Explanation": explanation
+            "Explanation": explanation,
+            "Confidence Score": confidence
         })
         time.sleep(0.2)  # Optional rate limit
 
