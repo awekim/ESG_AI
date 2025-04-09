@@ -2,6 +2,7 @@ import ollama
 import pandas as pd
 import re
 import concurrent.futures
+import time 
 
 desiredModel = 'llama3.3'
 
@@ -9,16 +10,29 @@ def AI_detect(transcript, business_description):
     prompt = f"""
     Business Description: {business_description}
     Firm Overview: {transcript}
-**Task** Given the business description and overview of a company, determine whether it is AI-related.
+**Task**  
+Given the business description and overview of a company, classify it as an "AI company", "AI-related company", or "Others".  
 
-**Criteria for Evaluation**
-AI-related company: The company directly develops or heavily incorporates AI technologies (e.g., AI models, algorithms, AI-powered software, machine learning platforms, AI research, AI-enhanced products and services). This includes companies focused on AI innovation, product development, or providing AI-driven solutions in various industries (e.g., healthcare, finance, automotive, and entertainment).
-Non-AI company: The company uses AI in a supplementary capacity (e.g., for marketing analytics, automation, or operational improvements) but does not have AI as a core business focus or develop AI technologies. These companies may use AI tools or services but do not engage in substantial AI innovation or research.
+**Evaluation Criteria (Expanded Definition)**  
+- **AI company**:  
+  The company either:
+  - Develops AI technologies (e.g., models, algorithms, AI software, ML platforms, computer vision, NLP, etc.), **or**
+  - Provides AI-powered products or services as a **core part of its business**, **or**
+  - Uses AI capabilities (e.g., generative AI, predictive analytics, intelligent automation) as a **key differentiator** in its main offerings, **or**
+  - Has a dedicated AI research team, AI platform, or significant AI-related R&D investment.
 
-**Output Format**
-AI Company Status: (Choose either "AI-related company" or "Non-AI company")
-Explanation: (For AI-related companies, summarize how they develop or apply AI, focusing on the use of AI-driven products, services, or research. For non-AI companies, describe their primary industry and core business activities.)    
-Confidence Score: (Provide a percentage score from 0 to 100, representing your confidence in the classification.)"""
+  *This includes companies where AI is not the only focus but is central to how the company delivers value or innovation.*
+
+- **AI-related company**:  
+  The company uses AI in a **supporting role**—e.g., for marketing optimization, logistics automation, customer service chatbots, or internal analytics—but **AI is not central** to its products or core value proposition.
+
+- **Others**:  
+  The company does not actively use, develop, or invest in AI technologies in a meaningful way. Its operations and products do not rely on AI innovation.
+
+**Output Format**  
+AI Company Status: (Choose one: "AI company", "AI-related company", or "Others")  
+Explanation: (Briefly explain how the company develops or applies AI. For AI companies, emphasize how AI is central to its business model or offerings.)  
+Confidence Score: (0–100%)"""
     try:
         response = ollama.chat(model=desiredModel, messages=[{"role": "user", "content": prompt}])
         result_text = response.get('message', {}).get('content', 'No response received')
@@ -63,6 +77,10 @@ for i, (name, overview, business) in enumerate(zip(targer_names, firm_overview, 
         "Confidence Score": confidence
     })
     time.sleep(0.2)  
+    
+    df_results = pd.DataFrame(results)
+    df_results.to_csv("I:/Data_for_practice/ESG/ai_company_classification_results.csv", index=False)
+
 
 # with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
 #     future_to_input = {
