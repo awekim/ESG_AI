@@ -109,6 +109,6 @@ for i, (name, overview, business, trade) in enumerate(zip(acquiror_names, firm_o
 #         time.sleep(0.2)  # Optional rate limit
 
 df_results = pd.DataFrame(results)
-df_results.to_csv("I:/Data_for_practice/ESG/ai_company_classification_results.csv", index=False)
+df_results.to_csv("I:/Data_for_practice/ESG/ai_focal_company_classification_results.csv", index=False)
 
 print("AI 분류 작업 완료. 결과가 'ai_company_classification_results.csv'에 저장되었습니다.")
